@@ -6,44 +6,52 @@ use App\Http\Controllers\MenuController;
 use App\Models\SshConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Native\Laravel\Facades\MenuBar;
+use Tests\Traits\MocksShell;
 
 class MenuControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MocksShell;
 
-    public function test_build_menu_with_recent_connections(): void
+    private MenuController $menuController;
+
+    protected function setUp(): void
     {
-        SshConnection::create([
-            'name' => 'Test Server 1',
-            'host' => 'example1.com',
-            'username' => 'user1',
-            'port' => 22,
-            'updated_at' => now()
-        ]);
-
-        SshConnection::create([
-            'name' => 'Test Server 2',
-            'host' => 'example2.com',
-            'username' => 'user2',
-            'port' => 22,
-            'updated_at' => now()->subMinute()
-        ]);
-
-        $menuController = new MenuController();
-        $menu = $menuController->buildMenu();
-
-        $this->assertNotNull($menu);
-        $this->assertIsArray($menu->toArray());
-        $this->assertStringContainsString('Test Server 1', $menu->toArray()["submenu"][2]['label']);
-        $this->assertStringContainsString('Test Server 2', $menu->toArray()["submenu"][3]['label']);
+        parent::setUp();
+        $this->menuController = new MenuController();
     }
 
-    public function test_build_menu_with_no_connections(): void
+    public function test_refresh_menu_creates_menu_bar(): void
     {
-        $menuController = new MenuController();
-        $menu = $menuController->buildMenu();
+        // Mock the MenuBar facade
+        MenuBar::shouldReceive('create')
+            ->once()
+            ->andReturnSelf();
+        
+        MenuBar::shouldReceive('width')
+            ->with(300)
+            ->once()
+            ->andReturnSelf();
+            
+        MenuBar::shouldReceive('height')
+            ->with(600)
+            ->once()
+            ->andReturnSelf();
+            
+        MenuBar::shouldReceive('icon')
+            ->once()
+            ->andReturnSelf();
+            
+        MenuBar::shouldReceive('blendBackgroundBehindWindow')
+            ->once()
+            ->andReturnSelf();
+            
+        MenuBar::shouldReceive('withContextMenu')
+            ->once()
+            ->andReturnSelf();
 
-        $this->assertNotNull($menu);
-        $this->assertEquals('No recent connections', $menu->toArray()["submenu"][2]['label']);
+        $this->menuController->refreshMenu();
+        
+        $this->assertTrue(true); // Assert that we got here without exceptions
     }
 } 

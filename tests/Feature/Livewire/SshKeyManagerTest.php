@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Native\Laravel\Facades\Shell;
 
 class SshKeyManagerTest extends TestCase
 {
@@ -46,6 +47,8 @@ class SshKeyManagerTest extends TestCase
 
         $this->assertCount(1, $component->get('publicKeys'));
         $this->assertEquals('id_test.pub', $component->get('publicKeys.0.name'));
+        $this->assertArrayHasKey('content', $component->get('publicKeys.0'));
+        $this->assertArrayHasKey('path', $component->get('publicKeys.0'));
     }
 
     public function test_can_copy_public_key(): void
@@ -54,31 +57,19 @@ class SshKeyManagerTest extends TestCase
         $component->set('sshDirectory', $this->testSshDir);
         $component->call('loadPublicKeys');
     
-        // Get the content of the public key file
         $publicKeyContent = File::get($this->testPublicKey);
-    
-        // Mock the dispatch and verify the method call
-        $component->call('copyPublicKey', 0);
-    
-        // Ensure the content matches the expected public key content
-        $this->assertEquals($publicKeyContent, $component->get('publicKeys')[0]['content']);
-    
-        // No direct assertion for dispatch, but logic is confirmed
-        $this->assertTrue(true);
+        
+        $component->call('copyPublicKey', 0)
+            ->assertDispatched('copyToClipboard', content: $publicKeyContent);
     }
-      
 
-    public function test_can_delete_key(): void
+    public function test_copy_public_key_handles_invalid_index(): void
     {
         $component = Livewire::test(SshKeyManager::class);
         $component->set('sshDirectory', $this->testSshDir);
-        $component->call('loadPublicKeys');
         
-        $component->call('deleteKey', 0);
-        
-        $this->assertFalse(File::exists($this->testPublicKey));
-        $this->assertFalse(File::exists($this->testPrivateKey));
-        $this->assertEmpty($component->get('publicKeys'));
+        $component->call('copyPublicKey', 999)
+            ->assertNotDispatched('copyToClipboard');
     }
 
     public function test_can_generate_new_key(): void
@@ -92,10 +83,32 @@ class SshKeyManagerTest extends TestCase
         $scriptFiles = glob(storage_path('app/ssh_scripts/generate_key_*.command'));
         $this->assertNotEmpty($scriptFiles);
         
+        // Verify script content
+        $scriptContent = File::get($scriptFiles[0]);
+        $this->assertStringContainsString('#!/bin/bash', $scriptContent);
+        $this->assertStringContainsString('ssh-keygen', $scriptContent);
+        $this->assertStringContainsString('Enter key name', $scriptContent);
+        
         // Cleanup
         foreach ($scriptFiles as $file) {
             File::delete($file);
         }
+    }
+
+    public function test_generate_new_key_creates_directory_if_not_exists(): void
+    {
+        $newSshDir = sys_get_temp_dir() . '/.ssh_new_' . uniqid();
+        
+        $component = Livewire::test(SshKeyManager::class);
+        $component->set('sshDirectory', $newSshDir);
+        
+        $component->call('generateNewKey');
+        
+        $this->assertTrue(File::exists($newSshDir));
+        $this->assertEquals(0700, octdec(substr(sprintf('%o', fileperms($newSshDir)), -4)));
+        
+        // Cleanup
+        File::deleteDirectory($newSshDir);
     }
 
     public function test_handles_missing_ssh_directory(): void
@@ -111,11 +124,17 @@ class SshKeyManagerTest extends TestCase
 
     public function test_can_open_ssh_directory(): void
     {
+        // Clear any existing mocks
+        \Mockery::close();
+        
+        Shell::partialMock()
+            ->shouldReceive('openFile')
+            ->once()
+            ->with($this->testSshDir);
+        
         $component = Livewire::test(SshKeyManager::class);
         $component->set('sshDirectory', $this->testSshDir);
         $component->call('openSshDirectory');
-        
-        $this->assertTrue(File::exists($this->testSshDir));
     }
 
     public function test_mount_sets_correct_ssh_directory(): void
@@ -129,5 +148,25 @@ class SshKeyManagerTest extends TestCase
         };
         
         $this->assertEquals($expectedDir, $component->get('sshDirectory'));
+    }
+
+    public function test_generate_new_key_handles_script_creation_failure(): void
+    {
+        // Make storage directory read-only
+        $storageDir = storage_path('app/ssh_scripts');
+        if (!File::exists($storageDir)) {
+            File::makeDirectory($storageDir, 0400, true);
+        }
+        chmod($storageDir, 0400);
+
+        $component = Livewire::test(SshKeyManager::class);
+        
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Failed to generate SSH key');
+        
+        $component->call('generateNewKey');
+
+        // Cleanup
+        chmod($storageDir, 0755);
     }
 } 

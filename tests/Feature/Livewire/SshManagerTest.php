@@ -7,6 +7,7 @@ use App\Models\SshConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Cache;
 
 class SshManagerTest extends TestCase
 {
@@ -15,6 +16,7 @@ class SshManagerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Cache::flush();
     }
 
     public function test_can_add_new_connection(): void
@@ -36,6 +38,15 @@ class SshManagerTest extends TestCase
             'username' => 'testuser',
             'port' => 22
         ]);
+    }
+
+    public function test_handles_failed_add_connection(): void
+    {
+        // Force an error by providing invalid data
+        Livewire::test(SshManager::class, ['connections' => []])
+            ->set('newConnection', [])
+            ->call('addConnection')
+            ->assertSessionHas('error', 'Error adding connection.');
     }
 
     public function test_can_update_connection(): void
@@ -86,6 +97,24 @@ class SshManagerTest extends TestCase
             ->assertSet('connections.0.is_healthy', false);
     }
 
+    public function test_connection_health_caching(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'example.com',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        $component = Livewire::test(SshManager::class, ['connections' => [$connection]]);
+        $component->call('updateConnectionsHealth');
+        
+        // Verify the health status is cached
+        $cacheKey = "ssh_health_{$connection->id}";
+        $this->assertTrue(Cache::has($cacheKey));
+    }
+
     public function test_can_start_connection(): void
     {
         $connection = SshConnection::create([
@@ -99,11 +128,25 @@ class SshManagerTest extends TestCase
         Livewire::test(SshManager::class, ['connections' => [$connection]])
             ->call('startConnection', $connection->id);
 
-        // Since we're using a test shell instance, we just verify the connection exists
         $this->assertDatabaseHas('ssh_connections', [
             'id' => $connection->id,
             'name' => 'Test Server'
         ]);
+    }
+
+    public function test_handles_failed_connection_start(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'invalid-host',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->call('startConnection', 999)
+            ->assertDispatched('error');
     }
 
     public function test_can_edit_connection(): void
@@ -143,21 +186,12 @@ class SshManagerTest extends TestCase
         ]);
     }
 
-    public function test_handles_failed_connection_start(): void
+    public function test_handles_failed_delete_connection(): void
     {
-        $connection = SshConnection::create([
-            'name' => 'Test Server',
-            'host' => 'invalid-host',
-            'username' => 'testuser',
-            'port' => 22,
-            'password' => 'secret'
-        ]);
-
-        Livewire::test(SshManager::class, ['connections' => [$connection]])
-            ->call('startConnection', 999)
-            ->assertDispatched('error');
+        Livewire::test(SshManager::class, ['connections' => []])
+            ->call('deleteConnection', 999)
+            ->assertSessionHas('error', 'Error deleting connection.');
     }
-    
 
     public function test_handles_failed_connection_update(): void
     {
@@ -171,7 +205,7 @@ class SshManagerTest extends TestCase
 
         Livewire::test(SshManager::class, ['connections' => [$connection]])
             ->set('selectedConnection', [
-                'id' => 999, // Non-existent ID
+                'id' => 999,
                 'name' => 'Updated Server',
                 'host' => 'updated.com',
                 'username' => 'updateduser',
@@ -179,5 +213,20 @@ class SshManagerTest extends TestCase
             ])
             ->call('updateConnection')
             ->assertDispatched('error');
+    }
+
+    public function test_handles_non_array_connections_in_health_update(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'example.com',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->call('updateConnectionsHealth')
+            ->assertOk();
     }
 } 
