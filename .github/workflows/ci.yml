@@ -40,12 +40,12 @@ jobs:
         run: |
           echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${{ env.COVERAGE }}%\", \"color\": \"${{ env.COLOR }}\"}" > coverage.json
 
-      - name: Commit and push coverage badge
+      - name: Force commit coverage.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add coverage.json
-          git commit -m "Update coverage badge"
-          git push
+          git add -f coverage.json  # Force add coverage.json to staging
+          git commit -m "Force update coverage.json" || echo "Nothing to commit"
+          git push origin HEAD || echo "Nothing to push"
