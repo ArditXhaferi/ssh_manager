@@ -1,12 +1,3 @@
-
-Here's the updated README file with your requested changes to include the coverage badge:
-
-markdown
-Copy code
-<p align="center">  
-  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo">  
-</p>
-
 <p align="center">  
   <a href="https://github.com/arditxhaferi/sssh/actions">  
     <img src="https://github.com/arditxhaferi/sssh/workflows/CI/badge.svg" alt="Build Status">  
