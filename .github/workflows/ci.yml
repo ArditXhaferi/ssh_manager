@@ -16,12 +16,21 @@ jobs:
       - name: Extract coverage percentage
         run: |
           COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
-          # Ensure COVERAGE is a valid number, default to 0 if not found
           if [ -z "$COVERAGE" ]; then
             COVERAGE="0"
           fi
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
-          
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV   
+             
+      - name: Determine Badge Color
+        run: |
+          if [ "${{ env.COVERAGE }}" -ge 80 ]; then
+            echo "COLOR=green" >> $GITHUB_ENV
+          elif [ "${{ env.COVERAGE }}" -ge 70 ]; then
+            echo "COLOR=yellow" >> $GITHUB_ENV
+          else
+            echo "COLOR=red" >> $GITHUB_ENV
+          fi
+
       - name: Generate coverage badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
@@ -30,4 +39,5 @@ jobs:
           filename: coverage.json
           label: coverage
           message: "${{ env.COVERAGE }}"
-          color: ${{ env.COVERAGE >= 80 && 'green' || env.COVERAGE >= 70 && 'yellow' || 'red' }}
+          color: "${{ env.COLOR }}"
+
