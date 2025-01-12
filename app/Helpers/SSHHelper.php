@@ -24,6 +24,7 @@ class SSHHelper
      * @param string $password
      * @return string
      */
+    
     private static function createExpectScript($sshOptions, $port, $username, $host, $password): string
     {
         return sprintf('expect << EOF
