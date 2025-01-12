@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Native\Laravel\Facades\MenuBar;
 use App\Http\Controllers\MenuController;
 use Illuminate\Support\Facades\Cache;
+use App\Actions\ReturnSignature;
+use App\Helpers\SSHHelper;
 
 class SshManager extends Component
 {
@@ -24,6 +26,14 @@ class SshManager extends Component
         'password' => '',
         'locked' => false
     ];
+    public $connection = [
+        'name' => '',
+        'host' => '',
+        'username' => '',
+        'port' => 22,
+        'password' => '',
+        'locked' => false
+    ];
 
     protected $listeners = [
         'MenuBarShown' => 'updateConnectionsHealth'
@@ -32,6 +42,7 @@ class SshManager extends Component
     public function mount($connections)
     {
         $this->connections = $connections;
+        $this->updateConnectionsHealth();
     }
 
     public function addConnection()
@@ -81,7 +92,16 @@ class SshManager extends Component
 
     public function editConnection($id)
     {
-        $this->selectedConnection = collect($this->connections)->firstWhere('id', $id);
+        $connection = collect($this->connections)->firstWhere('id', $id);
+        $this->connection = [
+            'id' => $connection['id'],
+            'name' => $connection['name'],
+            'host' => $connection['host'],
+            'username' => $connection['username'],
+            'port' => $connection['port'],
+            'password' => $connection['password'] ?? '',
+            'locked' => $connection['locked'] ?? false
+        ];
         $this->showEditModal = true;
     }
 
@@ -195,19 +215,10 @@ class SshManager extends Component
 
             // Clear terminal and add ASCII art
             $scriptContent .= "clear\n";
-            $scriptContent .= 'echo "
---  _____                                    _____ 
--- ( ___ )----------------------------------( ___ )
---  |   |                                    |   | 
---  |   |  ______  ______  ______  __  __    |   | 
---  |   | /\  ___\/\  ___\/\  ___\/\ \_\ \   |   | 
---  |   | \ \___  \ \___  \ \___  \ \  __ \  |   | 
---  |   |  \/\_____\/\_____\/\_____\ \_\ \_\ |   | 
---  |   |   \/_____/\/_____/\/_____/\/_/\/_/ |   | 
---  |___|                                    |___| 
--- (_____)----------------------------------(_____)
-  
-  Connecting to ' . $connection['name'] . '..."' . "\n\n";
+            $scriptContent .= "cat << 'EOF'\n";
+            $scriptContent .= app(ReturnSignature::class)->execute();
+            $scriptContent .= "\nEOF\n\n";
+            $scriptContent .= "echo \"Connecting to " . $connection['name'] . "...\"\n\n";
 
             $scriptContent .= "sleep 2\n";
             $scriptContent .= "clear\n";
@@ -252,6 +263,56 @@ class SshManager extends Component
             ]);
             session()->flash('error', 'Failed to open SSH connection: ' . $e->getMessage());
         }
+    }
+
+    private function testConnection($connection)
+    {
+        Log::info('Testing SSH connection', [
+            'connection_id' => $connection['id'],
+            'name' => $connection['username'],
+            'host' => $connection['host'],
+            'port' => $connection['port']
+        ]);
+
+        $cacheKey = "ssh_health_{$connection['id']}";
+
+        return Cache::remember($cacheKey, 30, function () use ($connection) {
+            $result = SSHHelper::testSSHConnection(
+                $connection['host'],
+                $connection['username'],
+                $connection['password'],
+                $connection['port']
+            );
+
+            // Log the result
+            if ($result === true) {
+                Log::info('SSH connection test successful', [
+                    'connection_id' => $connection['id'],
+                    'name' => $connection['username']
+                ]);
+            } else {
+                Log::warning('SSH connection test failed', [
+                    'connection_id' => $connection['id'],
+                    'name' => $connection['username'],
+                    'error' => $result
+                ]);
+            }
+
+            return $result === true;
+        });
+    }
+
+    public function updateConnectionsHealth()
+    {
+        $this->connections = collect($this->connections)->map(function ($connection) {
+            if (is_array($connection)) {
+                $connection['is_healthy'] = $this->testConnection($connection);
+            } else {
+                $connection = $connection->toArray();
+                $connection['is_healthy'] = $this->testConnection($connection);
+            }
+            return $connection;
+        })->toArray();
     }
 
     public function render()

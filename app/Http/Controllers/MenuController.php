@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Native\Laravel\Facades\MenuBar;
 use Native\Laravel\Facades\Menu;
 use App\Models\SshConnection;
+use Native\Laravel\Facades\Window;
 
 class MenuController extends Controller
 {
@@ -43,8 +44,10 @@ class MenuController extends Controller
 
     public function refreshMenu()
     {
+        Window::create();
         MenuBar::create()
             ->width(300)
+            ->height(600)
             ->icon(public_path('menuBarIcon.png'))
             ->blendBackgroundBehindWindow()
             ->withContextMenu($this->buildMenu());

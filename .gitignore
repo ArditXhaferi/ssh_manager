@@ -21,3 +21,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+!coverage/
+coverage/*
+coverage.xml
+clover.xml
