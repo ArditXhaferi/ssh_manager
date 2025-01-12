@@ -52,7 +52,7 @@ jobs:
             git tag "v${{ env.new_version }}"
             git push --tags
           fi
-          git push
+          git push --force origin main
 
   build-test:
     runs-on: ubuntu-latest
@@ -106,4 +106,4 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add coverage.json
           git commit -m "chore: update coverage badge" || exit 0
-          git push
+          git push --force origin main
