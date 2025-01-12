@@ -1,3 +1,8 @@
+
+Here's the updated README file with your requested changes to include the coverage badge:
+
+markdown
+Copy code
 <p align="center">  
   <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo">  
 </p>
@@ -10,7 +15,7 @@
     <img src="https://img.shields.io/packagist/l/laravel/framework" alt="License">  
   </a>  
   <a href="https://github.com/arditxhaferi/ssh_manager/actions">  
-    <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/arditxhaferi/7b1390f4c40bbc6cecfe228cc485d0a6/raw/coverage.json" alt="Coverage">  
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/coverage.json" alt="Coverage">  
   </a>  
 </p>
 
