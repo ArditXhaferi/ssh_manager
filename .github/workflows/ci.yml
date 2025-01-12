@@ -21,7 +21,7 @@ jobs:
         id: version
         run: |
           if [ -f version.json ]; then
-            current_version=$(cat version.json | jq -r .version)
+            current_version=$(cat version.json | jq -r .message)
           else
             current_version="0.0.0"
           fi
@@ -44,7 +44,7 @@ jobs:
           
       - name: Update version files
         run: |
-          echo "{\"schemaVersion\": 1, \"version\": \"${{ env.new_version }}\", \"label\": \"version\", \"message\": \"${{ env.new_version }}\", \"color\": \"blue\"}" > version.json
+          echo "{\"schemaVersion\": 1, \"label\": \"version\", \"message\": \"${{ env.new_version }}\", \"color\": \"blue\"}" > version.json
           
       - name: Commit and push changes
         run: |
