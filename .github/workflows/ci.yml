@@ -50,9 +50,9 @@ jobs:
           # Check if tag exists before creating it
           if ! git rev-parse "v${{ env.new_version }}" >/dev/null 2>&1; then
             git tag "v${{ env.new_version }}"
-            git push --tags
           fi
-          git push --force origin main
+          git push origin main
+          git push --tags
 
   build-test:
     runs-on: ubuntu-latest
