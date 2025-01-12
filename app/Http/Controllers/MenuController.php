@@ -44,6 +44,9 @@ class MenuController extends Controller
 
     public function refreshMenu()
     {
+        Window::open()
+        ->width(800)
+        ->height(800);
         MenuBar::create()
             ->width(300)
             ->height(600)

@@ -5,7 +5,7 @@
                 <div class="flex items-center space-x-2">
                     <div class="flex-1 truncate">
                         <h2 class="text-sm font-medium text-white truncate">{{ $connection['name'] }}</h2>
-                        <p class="text-xs text-gray-400 truncate">{{ $connection['username'] . " @" }}{{ $connection['host'] }}</p>
+                        <p class="text-xs text-gray-400 truncate">{{ $connection['username'] . "@" }}{{ $connection['host'] }}</p>
                     </div>
                     @if($connection['is_healthy'] ?? false)
                         <span class="flex h-1.5 w-1.5 rounded-full bg-green-400 shadow-green-400/50 shadow-sm"></span>
