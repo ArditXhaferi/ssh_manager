@@ -1,11 +1,6 @@
-name: Auto Version
+name: CI
 
-on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - 'version.json'
-      - 'README.md'
+on: [push]
 
 jobs:
   version:
@@ -57,4 +52,58 @@ jobs:
             git tag "v${{ env.new_version }}"
             git push --tags
           fi
+          git push
+
+  build-test:
+    runs-on: ubuntu-latest
+    needs: version
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, libxml, zip
+          coverage: xdebug
+          
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run tests with coverage
+        run: composer test:coverage-text | tee coverage.txt
+      
+      - name: Extract coverage percentage
+        run: |
+          COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
+          if [ -z "$COVERAGE" ]; then
+            COVERAGE="0"
+          fi
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV   
+
+      - name: Determine Badge Color
+        run: |
+          COVERAGE=${{ env.COVERAGE }}
+          COVERAGE_INT=$(printf "%.0f" $COVERAGE)
+          if [ "$COVERAGE_INT" -ge 80 ]; then
+            echo "COLOR=green" >> $GITHUB_ENV
+          elif [ "$COVERAGE_INT" -ge 70 ]; then
+            echo "COLOR=yellow" >> $GITHUB_ENV
+          else
+            echo "COLOR=red" >> $GITHUB_ENV
+          fi
+
+      - name: Generate coverage badge
+        run: |
+          echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${{ env.COVERAGE }}%\", \"color\": \"${{ env.COLOR }}\"}" > coverage.json
+
+      - name: Commit and push coverage badge
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add coverage.json
+          git commit -m "chore: update coverage badge" || exit 0
           git push
