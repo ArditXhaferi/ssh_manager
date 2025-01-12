@@ -1,6 +1,6 @@
 <p align="center">  
   <a href="https://github.com/arditxhaferi/ssh_manager/actions">  
-    <img src="https://img.shields.io/github/actions/workflow/status/arditxhaferi/sssh/ci.yml?style=flat-square&logo=github&label=build" alt="Build Status">  
+    <img src="https://img.shields.io/github/actions/workflow/status/arditxhaferi/ssh_manager/ci.yml?style=flat-square&logo=github&label=build" alt="Build Status">  
   </a>  
   <a href="https://packagist.org/packages/laravel/framework">  
     <img src="https://img.shields.io/packagist/l/laravel/framework" alt="License">  
@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/coverage.json" alt="Coverage">  
   </a>
   <a href="https://github.com/arditxhaferi/ssh_manager/releases">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/sssh/main/version.json&style=flat-square&label=version" alt="Version">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/version.json&style=flat-square&label=version" alt="Version">
   </a>
 </p>
 

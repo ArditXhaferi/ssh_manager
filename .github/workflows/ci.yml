@@ -44,7 +44,7 @@ jobs:
           
       - name: Update version files
         run: |
-          echo "{\"version\": \"${{ env.new_version }}\"}" > version.json
+          echo "{\"schemaVersion\": 1, \"version\": \"${{ env.new_version }}\", \"label\": \"version\", \"message\": \"${{ env.new_version }}\", \"color\": \"blue\"}" > version.json
           
       - name: Commit and push changes
         run: |
