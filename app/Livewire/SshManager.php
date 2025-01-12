@@ -155,7 +155,7 @@ class SshManager extends Component
                 'error' => $e->getMessage(),
                 'connection_id' => $this->selectedConnection['id']
             ]);
-            session()->flash('error', 'Error updating connection.');
+            $this->dispatch('error', message: 'Error updating connection.');
         }
     }
 
@@ -261,7 +261,10 @@ class SshManager extends Component
                 'error' => $e->getMessage(),
                 'connection_id' => $id
             ]);
-            session()->flash('error', 'Failed to open SSH connection: ' . $e->getMessage());
+            
+            // Replace session flash with dispatch
+            $this->dispatch('error', message: 'Failed to open SSH connection: ' . $e->getMessage());
+            return;
         }
     }
 

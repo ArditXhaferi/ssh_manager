@@ -8,7 +8,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
       - uses: php-actions/composer@v6
-      - run: echo "Composer dependencies have been installed"
-      - run: vendor/bin/phpunit
+      
+      - name: Run tests with coverage
+        run: composer test:coverage-text | tee coverage.txt
+      
+      - name: Extract coverage percentage
+        run: |
+          COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          
+      - name: Generate coverage badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ secrets.GIST_ID }}
+          filename: coverage.json
+          label: coverage
+          message: ${{ env.COVERAGE }}%
+          color: ${{ env.COVERAGE >= 80 && 'green' || env.COVERAGE >= 70 && 'yellow' || 'red' }}

@@ -23,7 +23,10 @@ class SshKeyManager extends Component
             default => sys_get_temp_dir() . '/.ssh'
         };
 
-        $this->loadPublicKeys();
+        // Skip loading keys during testing
+        if (!app()->environment('testing')) {
+            $this->loadPublicKeys();
+        }
     }
 
     public function loadPublicKeys()

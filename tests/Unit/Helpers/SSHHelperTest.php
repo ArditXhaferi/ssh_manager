@@ -23,11 +23,21 @@ class SSHHelperTest extends TestCase
 
     public function test_ssh_connection_test_returns_true_for_valid_connection(): void
     {
+        // Mock global return value for the exec function
         global $mockExecReturnValue;
         $mockExecReturnValue = 0;
 
-        $result = SSHHelper::testSSHConnection('example.com', 'user', null, 22);
-        $this->assertTrue($result);
+        // Use Rebex's public SSH test server credentials
+        $host = 'test.rebex.net';
+        $username = 'demo';
+        $password = 'password';
+        $port = 22;
+
+        // Perform the SSH connection test
+        $result = SSHHelper::testSSHConnection($host, $username, $password, $port);
+
+        // Assert that the connection test returns true
+        $this->assertTrue($result, 'The SSH connection test should return true for valid credentials.');
     }
 
     public function test_ssh_connection_test_returns_false_for_invalid_connection(): void

@@ -14,8 +14,8 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
-        // Create a test shell instance
-        $shell = new class extends NativeShell {
+        // Create a test shell instance with mock client
+        $shell = new class(new \Native\Laravel\Client\Client) extends NativeShell {
             public function openFile(string $path): string
             {
                 return $path;

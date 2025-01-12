@@ -96,7 +96,7 @@ class SshManagerTest extends TestCase
             'password' => 'secret'
         ]);
 
-        Livewire::test(SshManager::class)
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
             ->call('startConnection', $connection->id);
 
         // Since we're using a test shell instance, we just verify the connection exists
@@ -104,5 +104,80 @@ class SshManagerTest extends TestCase
             'id' => $connection->id,
             'name' => 'Test Server'
         ]);
+    }
+
+    public function test_can_edit_connection(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'example.com',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret',
+            'locked' => false
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->call('editConnection', $connection->id)
+            ->assertSet('connection.id', $connection->id)
+            ->assertSet('connection.name', 'Test Server')
+            ->assertSet('connection.host', 'example.com')
+            ->assertSet('showEditModal', true);
+    }
+
+    public function test_can_delete_connection(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'example.com',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->call('deleteConnection', $connection->id);
+
+        $this->assertDatabaseMissing('ssh_connections', [
+            'id' => $connection->id
+        ]);
+    }
+
+    public function test_handles_failed_connection_start(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'invalid-host',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->call('startConnection', 999)
+            ->assertDispatched('error');
+    }
+    
+
+    public function test_handles_failed_connection_update(): void
+    {
+        $connection = SshConnection::create([
+            'name' => 'Test Server',
+            'host' => 'example.com',
+            'username' => 'testuser',
+            'port' => 22,
+            'password' => 'secret'
+        ]);
+
+        Livewire::test(SshManager::class, ['connections' => [$connection]])
+            ->set('selectedConnection', [
+                'id' => 999, // Non-existent ID
+                'name' => 'Updated Server',
+                'host' => 'updated.com',
+                'username' => 'updateduser',
+                'port' => 2222
+            ])
+            ->call('updateConnection')
+            ->assertDispatched('error');
     }
 } 
