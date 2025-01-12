@@ -1,51 +1,57 @@
-name: CI
+name: Auto Version
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'version.json'
+      - 'README.md'
 
 jobs:
-  build-test:
+  version:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Use the built-in GITHUB_TOKEN
-
-      - uses: php-actions/composer@v6
-      
-      - name: Run tests with coverage
-        run: composer test:coverage-text | tee coverage.txt
-      
-      - name: Extract coverage percentage
+          fetch-depth: 0
+          
+      - name: Get current version
+        id: version
         run: |
-          COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
-          if [ -z "$COVERAGE" ]; then
-            COVERAGE="0"
-          fi
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV   
-
-      - name: Determine Badge Color
-        run: |
-          COVERAGE=${{ env.COVERAGE }}
-          COVERAGE_INT=$(printf "%.0f" $COVERAGE) # Round to nearest integer
-          if [ "$COVERAGE_INT" -ge 80 ]; then
-            echo "COLOR=green" >> $GITHUB_ENV
-          elif [ "$COVERAGE_INT" -ge 70 ]; then
-            echo "COLOR=yellow" >> $GITHUB_ENV
+          if [ -f version.json ]; then
+            current_version=$(cat version.json | jq -r .version)
           else
-            echo "COLOR=red" >> $GITHUB_ENV
+            current_version="0.0.0"
           fi
-
-      - name: Generate coverage badge
+          echo "current_version=$current_version" >> $GITHUB_ENV
+          
+      - name: Calculate new version
         run: |
-          echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${{ env.COVERAGE }}%\", \"color\": \"${{ env.COLOR }}\"}" > coverage.json
-
-      - name: Force commit coverage.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IFS='.' read -r -a version_parts <<< "${{ env.current_version }}"
+          patch=$((version_parts[2] + 1))
+          if [ $patch -gt 9 ]; then
+            patch=0
+            minor=$((version_parts[1] + 1))
+            major=${version_parts[0]}
+          else
+            minor=${version_parts[1]}
+            major=${version_parts[0]}
+          fi
+          new_version="$major.$minor.$patch"
+          echo "new_version=$new_version" >> $GITHUB_ENV
+          
+      - name: Update version files
+        run: |
+          echo "{\"version\": \"${{ env.new_version }}\"}" > version.json
+          
+      - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f coverage.json  # Force add coverage.json to staging
-          git commit -m "Force update coverage.json" || echo "Nothing to commit"
-          git push origin HEAD || echo "Nothing to push"
+          git add version.json
+          git commit -m "chore: bump version to ${{ env.new_version }}" || exit 0
+          git tag "v${{ env.new_version }}"
+          git push
+          git push --tags
