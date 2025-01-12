@@ -16,6 +16,10 @@ jobs:
       - name: Extract coverage percentage
         run: |
           COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
+          # Ensure COVERAGE is a valid number, default to 0 if not found
+          if [ -z "$COVERAGE" ]; then
+            COVERAGE="0"
+          fi
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
           
       - name: Generate coverage badge
@@ -25,5 +29,5 @@ jobs:
           gistID: ${{ secrets.GIST_ID }}
           filename: coverage.json
           label: coverage
-          message: ${{ env.COVERAGE }}%
+          message: "${{ env.COVERAGE }}"
           color: ${{ env.COVERAGE >= 80 && 'green' || env.COVERAGE >= 70 && 'yellow' || 'red' }}
