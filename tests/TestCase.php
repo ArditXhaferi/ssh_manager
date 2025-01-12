@@ -12,6 +12,12 @@ abstract class TestCase extends BaseTestCase
 
     protected function setUp(): void
     {
+        $this->afterApplicationCreated(function () {
+            if (empty(config('app.key'))) {
+                config(['app.key' => 'base64:' . base64_encode(random_bytes(32))]);
+            }
+        });
+        
         parent::setUp();
         
         // Create a test shell instance with mock client
