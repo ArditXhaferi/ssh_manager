@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/coverage.json" alt="Coverage">  
   </a>
   <a href="https://github.com/arditxhaferi/ssh_manager/releases">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/version.json&style=flat-square&label=version" alt="Version">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/arditxhaferi/ssh_manager/main/version.json" alt="Version">
   </a>
 </p>
 
