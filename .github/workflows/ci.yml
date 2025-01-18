@@ -78,12 +78,12 @@ jobs:
       
       - name: Extract coverage percentage
         run: |
-          # Extract coverage and round to whole number
-          COVERAGE=$(grep -oP 'Lines:\s+\K\d+\.\d+(?=%)' coverage.txt || echo "0")
+          # Extract coverage and get the second line (Lines coverage)
+          COVERAGE=$(grep -oP 'Lines:\s+\K\d+\.\d+(?=%)' coverage.txt | sed -n '1p' || echo "0")
           if [ -z "$COVERAGE" ]; then
             COVERAGE="0"
           fi
-          # Round to nearest whole number and ensure it's treated as a single value
+          # Round to nearest whole number
           COVERAGE_INT=$(printf "%.0f" "$COVERAGE")
           echo "COVERAGE=$COVERAGE_INT" >> "$GITHUB_ENV"
 
