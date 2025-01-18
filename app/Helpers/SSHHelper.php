@@ -91,6 +91,11 @@ EOF', $sshOptions, $port, $username, $host, $password);
      */
     public static function testSSHConnection($host, $username, $password = null, $port = 22)
     {
+        // Validate username format (only allow alphanumeric, underscore, and hyphen)
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
+            return 'Invalid username format';
+        }
+
         try {
             $sshOptions = self::getBaseSSHOptions();
             
@@ -100,7 +105,14 @@ EOF', $sshOptions, $port, $username, $host, $password);
                 $command = self::createSSHCommand($sshOptions, $port, $username, $host);
             }
 
-            return self::executeCommand($command);
+            $result = self::executeCommand($command);
+            
+            // If the result is a string and contains hostname resolution error
+            if (is_string($result) && stripos($result, 'Could not resolve hostname') !== false) {
+                return $result;
+            }
+
+            return $result;
         } catch (\Exception $e) {
             return "SSH connection error: " . $e->getMessage();
         }

@@ -78,7 +78,7 @@ jobs:
       
       - name: Extract coverage percentage
         run: |
-          COVERAGE=$(grep -oP '\d+\.\d+(?=\%)' coverage.txt | head -1)
+          COVERAGE=$(grep -oP 'Lines:\s+\K\d+\.\d+(?=%)' coverage.txt)
           if [ -z "$COVERAGE" ]; then
             COVERAGE="0"
           fi

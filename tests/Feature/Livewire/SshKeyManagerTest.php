@@ -98,17 +98,44 @@ class SshKeyManagerTest extends TestCase
     public function test_generate_new_key_creates_directory_if_not_exists(): void
     {
         $newSshDir = sys_get_temp_dir() . '/.ssh_new_' . uniqid();
+        $storageDir = storage_path('app/ssh_scripts');
         
-        $component = Livewire::test(SshKeyManager::class);
-        $component->set('sshDirectory', $newSshDir);
+        // Ensure storage directory exists with proper permissions
+        if (!File::exists($storageDir)) {
+            File::makeDirectory($storageDir, 0755, true);
+        }
         
-        $component->call('generateNewKey');
-        
-        $this->assertTrue(File::exists($newSshDir));
-        $this->assertEquals(0700, octdec(substr(sprintf('%o', fileperms($newSshDir)), -4)));
-        
-        // Cleanup
-        File::deleteDirectory($newSshDir);
+        try {
+            $component = Livewire::test(SshKeyManager::class);
+            $component->set('sshDirectory', $newSshDir);
+            
+            $component->call('generateNewKey');
+            
+            // Verify SSH directory was created with correct permissions
+            $this->assertTrue(File::exists($newSshDir));
+            $this->assertEquals(0700, octdec(substr(sprintf('%o', fileperms($newSshDir)), -4)));
+            
+            // Verify script was created
+            $scriptFiles = glob($storageDir . '/generate_key_*.command');
+            $this->assertNotEmpty($scriptFiles);
+            
+        } finally {
+            // Cleanup
+            if (File::exists($newSshDir)) {
+                File::deleteDirectory($newSshDir);
+            }
+            
+            // Cleanup any generated script files
+            $scriptFiles = glob($storageDir . '/generate_key_*.command');
+            foreach ($scriptFiles as $file) {
+                File::delete($file);
+            }
+            
+            // Remove storage directory if we created it
+            if (File::exists($storageDir)) {
+                File::deleteDirectory($storageDir);
+            }
+        }
     }
 
     public function test_handles_missing_ssh_directory(): void
@@ -152,21 +179,33 @@ class SshKeyManagerTest extends TestCase
 
     public function test_generate_new_key_handles_script_creation_failure(): void
     {
-        // Make storage directory read-only
+        // Create storage directory if it doesn't exist
         $storageDir = storage_path('app/ssh_scripts');
         if (!File::exists($storageDir)) {
-            File::makeDirectory($storageDir, 0400, true);
+            File::makeDirectory($storageDir, 0755, true);
         }
-        chmod($storageDir, 0400);
 
-        $component = Livewire::test(SshKeyManager::class);
-        
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Failed to generate SSH key');
-        
-        $component->call('generateNewKey');
+        // Save original permissions
+        $originalPermissions = fileperms($storageDir);
 
-        // Cleanup
-        chmod($storageDir, 0755);
+        try {
+            // Make directory read-only
+            chmod($storageDir, 0444);
+
+            $component = Livewire::test(SshKeyManager::class);
+            
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Failed to generate SSH key');
+            
+            $component->call('generateNewKey');
+        } finally {
+            // Restore original permissions
+            chmod($storageDir, $originalPermissions);
+            
+            // Clean up
+            if (File::exists($storageDir)) {
+                File::deleteDirectory($storageDir);
+            }
+        }
     }
 } 

@@ -39,6 +39,15 @@ class SshManager extends Component
         'MenuBarShown' => 'updateConnectionsHealth'
     ];
 
+    protected $rules = [
+        'newConnection.name' => 'required|string|min:3',
+        'newConnection.host' => 'required|string',
+        'newConnection.username' => 'required|string',
+        'newConnection.port' => 'required|integer|min:1|max:65535',
+        'newConnection.password' => 'nullable|string',
+        'newConnection.locked' => 'boolean'
+    ];
+
     public function mount($connections)
     {
         $this->connections = $connections;
@@ -48,6 +57,8 @@ class SshManager extends Component
     public function addConnection()
     {
         try {
+            $validatedData = $this->validate();
+            
             Log::info('Creating new SSH connection', [
                 'name' => $this->newConnection['name'],
                 'host' => $this->newConnection['host'],
@@ -81,12 +92,15 @@ class SshManager extends Component
             session()->flash('message', 'Connection added successfully.');
 
             Log::info('Successfully added new SSH connection', ['name' => $this->newConnection['name']]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->dispatch('error', message: 'Validation failed.');
+            throw $e;  // Re-throw the validation exception for Livewire to handle
         } catch (\Exception $e) {
             Log::error('Failed to add SSH connection', [
                 'error' => $e->getMessage(),
                 'connection' => $this->newConnection['name']
             ]);
-            session()->flash('error', 'Error adding connection.');
+            $this->dispatch('error', message: 'Error adding connection.');
         }
     }
 
@@ -173,7 +187,7 @@ class SshManager extends Component
 
             session()->flash('message', 'Connection deleted successfully.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Error deleting connection.');
+            $this->dispatch('error', message: 'Error deleting connection.');
         }
     }
 

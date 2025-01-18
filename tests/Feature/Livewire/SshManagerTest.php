@@ -42,11 +42,18 @@ class SshManagerTest extends TestCase
 
     public function test_handles_failed_add_connection(): void
     {
-        // Force an error by providing invalid data
         Livewire::test(SshManager::class, ['connections' => []])
-            ->set('newConnection', [])
+            ->set('newConnection', [
+                'name' => '',
+                'host' => '',
+                'username' => '',
+                'port' => '',
+                'password' => '',
+                'locked' => false
+            ])
             ->call('addConnection')
-            ->assertSessionHas('error', 'Error adding connection.');
+            ->assertHasErrors(['newConnection.name', 'newConnection.host', 'newConnection.username'])
+            ->assertDispatched('error');
     }
 
     public function test_can_update_connection(): void
@@ -190,7 +197,7 @@ class SshManagerTest extends TestCase
     {
         Livewire::test(SshManager::class, ['connections' => []])
             ->call('deleteConnection', 999)
-            ->assertSessionHas('error', 'Error deleting connection.');
+            ->assertDispatched('error');
     }
 
     public function test_handles_failed_connection_update(): void
