@@ -78,20 +78,21 @@ jobs:
       
       - name: Extract coverage percentage
         run: |
+          # Extract coverage and round to whole number
           COVERAGE=$(grep -oP 'Lines:\s+\K\d+\.\d+(?=%)' coverage.txt || echo "0")
           if [ -z "$COVERAGE" ]; then
             COVERAGE="0"
           fi
-          # Ensure the value is properly formatted for GitHub env
+          # Round to nearest whole number
+          COVERAGE=$(printf "%.0f" $COVERAGE)
           echo "COVERAGE=${COVERAGE}" >> "$GITHUB_ENV"
 
       - name: Determine Badge Color
         run: |
           COVERAGE=${{ env.COVERAGE }}
-          COVERAGE_INT=$(printf "%.0f" $COVERAGE)
-          if [ "$COVERAGE_INT" -ge 80 ]; then
+          if [ "$COVERAGE" -ge 80 ]; then
             echo "COLOR=green" >> $GITHUB_ENV
-          elif [ "$COVERAGE_INT" -ge 70 ]; then
+          elif [ "$COVERAGE" -ge 70 ]; then
             echo "COLOR=yellow" >> $GITHUB_ENV
           else
             echo "COLOR=red" >> $GITHUB_ENV
