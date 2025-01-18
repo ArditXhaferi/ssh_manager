@@ -1,4 +1,7 @@
 <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <!-- Notification Component -->
+    @include('livewire.partials.notification')
+
     <!-- Main Content -->
     @include('livewire.partials.connections-grid')
 

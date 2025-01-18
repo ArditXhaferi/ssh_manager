@@ -11,6 +11,7 @@ use App\Http\Controllers\MenuController;
 use Illuminate\Support\Facades\Cache;
 use App\Actions\ReturnSignature;
 use App\Helpers\SSHHelper;
+use App\Actions\DispatchNotification;
 
 class SshManager extends Component
 {
@@ -18,14 +19,6 @@ class SshManager extends Component
     public $showNewModal = false;
     public $showEditModal = false;
     public $selectedConnection = null;
-    public $newConnection = [
-        'name' => '',
-        'host' => '',
-        'username' => '',
-        'port' => 22,
-        'password' => '',
-        'locked' => false
-    ];
     public $connection = [
         'name' => '',
         'host' => '',
@@ -40,12 +33,12 @@ class SshManager extends Component
     ];
 
     protected $rules = [
-        'newConnection.name' => 'required|string|min:3',
-        'newConnection.host' => 'required|string',
-        'newConnection.username' => 'required|string',
-        'newConnection.port' => 'required|integer|min:1|max:65535',
-        'newConnection.password' => 'nullable|string',
-        'newConnection.locked' => 'boolean'
+        'connection.name' => 'required|string|min:3',
+        'connection.host' => 'required|string',
+        'connection.username' => 'required|string',
+        'connection.port' => 'required|integer|min:1|max:65535',
+        'connection.password' => 'nullable|string',
+        'connection.locked' => 'boolean'
     ];
 
     public function mount($connections)
@@ -57,30 +50,41 @@ class SshManager extends Component
     public function addConnection()
     {
         try {
-            $validatedData = $this->validate();
-            
+            // Log all form data before validation
+            Log::info('Attempting to create new SSH connection - Form Data:', [
+                'name' => $this->connection['name'],
+                'host' => $this->connection['host'],
+                'username' => $this->connection['username'],
+                'port' => $this->connection['port'],
+                'locked' => $this->connection['locked'],
+                // Don't log password for security reasons
+                'has_password' => !empty($this->connection['password'])
+            ]);
+
+            $validatedData = $this->validate($this->rules);
+
             Log::info('Creating new SSH connection', [
-                'name' => $this->newConnection['name'],
-                'host' => $this->newConnection['host'],
-                'username' => $this->newConnection['username'],
-                'port' => $this->newConnection['port']
+                'name' => $this->connection['name'],
+                'host' => $this->connection['host'],
+                'username' => $this->connection['username'],
+                'port' => $this->connection['port']
             ]);
 
             // Create new SshConnection record in database
             $connection = SshConnection::create([
-                'name' => $this->newConnection['name'],
-                'host' => $this->newConnection['host'],
-                'username' => $this->newConnection['username'],
-                'port' => $this->newConnection['port'],
-                'password' => $this->newConnection['password'],
-                'locked' => $this->newConnection['locked']
+                'name' => $this->connection['name'],
+                'host' => $this->connection['host'],
+                'username' => $this->connection['username'],
+                'port' => $this->connection['port'],
+                'password' => $this->connection['password'],
+                'locked' => $this->connection['locked']
             ]);
 
             // Add the new connection to the local array
             $this->connections[] = $connection->toArray();
 
             $this->showNewModal = false;
-            $this->newConnection = [
+            $this->connection = [
                 'name' => '',
                 'host' => '',
                 'username' => '',
@@ -89,18 +93,33 @@ class SshManager extends Component
                 'locked' => false
             ];
 
-            session()->flash('message', 'Connection added successfully.');
+            DispatchNotification::execute(
+                $this,
+                'Connection Added',
+                'Successfully added ' . $this->connection['name'],
+                'success'
+            );
 
-            Log::info('Successfully added new SSH connection', ['name' => $this->newConnection['name']]);
+            Log::info('Successfully added new SSH connection', ['name' => $this->connection['name']]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            $this->dispatch('error', message: 'Validation failed.');
+            DispatchNotification::execute(
+                $this,
+                'Validation Failed',
+                $e->getMessage(),
+                'error'
+            );
             throw $e;  // Re-throw the validation exception for Livewire to handle
         } catch (\Exception $e) {
             Log::error('Failed to add SSH connection', [
                 'error' => $e->getMessage(),
-                'connection' => $this->newConnection['name']
+                'connection' => $this->connection['name']
             ]);
-            $this->dispatch('error', message: 'Error adding connection.');
+            DispatchNotification::execute(
+                $this,
+                'Error Adding Connection',
+                'Could not add the connection',
+                'error'
+            );
         }
     }
 
@@ -122,54 +141,40 @@ class SshManager extends Component
     public function updateConnection()
     {
         try {
-            Log::info('Updating SSH connection', [
-                'connection_id' => $this->selectedConnection['id'],
-                'name' => $this->selectedConnection['name'],
-                'host' => $this->selectedConnection['host'],
-                'username' => $this->selectedConnection['username'],
-                'port' => $this->selectedConnection['port']
-            ]);
-
-            // Update the database record
-            $connection = SshConnection::findOrFail($this->selectedConnection['id']);
+            $connection = SshConnection::findOrFail($this->connection['id']);
             $connection->update([
-                'name' => $this->selectedConnection['name'],
-                'host' => $this->selectedConnection['host'],
-                'username' => $this->selectedConnection['username'],
-                'port' => $this->selectedConnection['port'],
-                'password' => $this->selectedConnection['password'],
-                'locked' => $this->selectedConnection['locked']
+                'name' => $this->connection['name'],
+                'host' => $this->connection['host'],
+                'username' => $this->connection['username'],
+                'port' => $this->connection['port'],
+                'password' => $this->connection['password'],
+                'locked' => $this->connection['locked']
             ]);
 
             // Update the local array
-            Log::info('Updating local connections array', [
-                'connection_id' => $this->selectedConnection['id'],
-                'old_connection' => collect($this->connections)->firstWhere('id', $this->selectedConnection['id']),
-                'new_connection' => $this->selectedConnection
-            ]);
-
             $this->connections = collect($this->connections)->map(function ($item) {
-                if ($item['id'] === $this->selectedConnection['id']) {
-                    return $this->selectedConnection;
+                if ($item['id'] === $this->connection['id']) {
+                    return $this->connection;
                 }
                 return $item;
             })->toArray();
 
-            Log::info('Local connections array updated successfully');
-
             $this->showEditModal = false;
-            session()->flash('message', 'Connection updated successfully.');
+            
+            DispatchNotification::execute(
+                $this,
+                'Connection Updated',
+                'Successfully updated ' . $this->connection['name'],
+                'success'
+            );
 
-            Log::info('Successfully updated SSH connection', [
-                'connection_id' => $this->selectedConnection['id'],
-                'name' => $this->selectedConnection['name']
-            ]);
         } catch (\Exception $e) {
-            Log::error('Failed to update SSH connection', [
-                'error' => $e->getMessage(),
-                'connection_id' => $this->selectedConnection['id']
-            ]);
-            $this->dispatch('error', message: 'Error updating connection.');
+            DispatchNotification::execute(
+                $this,
+                'Update Failed',
+                'Could not update the connection',
+                'error'
+            );
         }
     }
 
@@ -187,7 +192,12 @@ class SshManager extends Component
 
             session()->flash('message', 'Connection deleted successfully.');
         } catch (\Exception $e) {
-            $this->dispatch('error', message: 'Error deleting connection.');
+            DispatchNotification::execute(
+                $this,
+                'Delete Failed',
+                'Could not delete the connection',
+                'error'
+            );
         }
     }
 
@@ -277,7 +287,12 @@ class SshManager extends Component
             ]);
             
             // Replace session flash with dispatch
-            $this->dispatch('error', message: 'Failed to open SSH connection: ' . $e->getMessage());
+            DispatchNotification::execute(
+                $this,
+                'Failed to open SSH connection',
+                'Could not open the SSH connection',
+                'error'
+            );
             return;
         }
     }
@@ -336,5 +351,35 @@ class SshManager extends Component
     {
         Log::info('render');
         return view('livewire.ssh-manager');
+    }
+
+    public function updatedShowNewModal($value)
+    {
+        if (!$value) {
+            $this->resetValidation();
+            $this->connection = [
+                'name' => '',
+                'host' => '',
+                'username' => '',
+                'port' => 22,
+                'password' => '',
+                'locked' => false
+            ];
+        }
+    }
+
+    public function updatedShowEditModal($value)
+    {
+        if (!$value) {
+            $this->resetValidation();
+            $this->connection = [
+                'name' => '',
+                'host' => '',
+                'username' => '',
+                'port' => 22,
+                'password' => '',
+                'locked' => false
+            ];
+        }
     }
 }

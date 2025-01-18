@@ -25,7 +25,7 @@
                     <button 
                         class="rounded-lg bg-white/10 backdrop-blur-lg p-1.5 text-white hover:bg-white/20 focus:outline-none transition-colors duration-200"
                         x-data
-                        @click="$dispatch('open-actions', { connection: {{ json_encode($connection) }} })"
+                        @click="$dispatch('open-actions', { connection: {{ Js::from($connection) }} })"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
